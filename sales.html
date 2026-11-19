@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Sujan Store — Sales &amp; Bill Printer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --gold: #b8860b;
+      --gold-light: #fef9e7;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --red: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header.topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .nav-tabs { display: flex; gap: 8px; align-items: center; }
+    .nav-link {
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: #fff;
+    }
+    .nav-link.active { background: var(--text); color: #fff; border-color: var(--text); }
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+    }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.green { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn.gold { background: #b45309; border-color: #b45309; color: #fff; }
+
+    .layout {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    .panel h2 { margin: 0 0 12px; font-size: 17px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .field label { font-size: 12px; font-weight: 700; color: var(--muted); }
+    .field input, .field select, .field textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    table.items-editor {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 12px;
+    }
+    table.items-editor th, table.items-editor td {
+      border: 1px solid var(--border);
+      padding: 6px;
+      text-align: left;
+    }
+    table.items-editor th { background: #f8fafc; font-weight: 700; }
+    table.items-editor input {
+      width: 100%;
+      padding: 5px 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    /* Recent Sales Table */
+    .sales-scroll { max-height: 300px; overflow: auto; margin-top: 10px; }
+    table.sales-hist { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.sales-hist th, table.sales-hist td {
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    table.sales-hist th { position: sticky; top: 0; background: #f8fafc; }
+
+    /* Printable Invoice Sheet */
+    #invoice-wrap {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 28px 30px;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+      color: #111827;
+    }
+    .inv-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2.5px solid #c59b27;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+      gap: 14px;
+    }
+    .inv-brand { display: flex; align-items: center; gap: 14px; }
+    .inv-logo {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      border: 2px solid #c59b27;
+      padding: 4px;
+      object-fit: contain;
+      background: #fff;
+    }
+    .inv-store-name {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #111827;
+      margin: 0;
+    }
+    .inv-store-meta {
+      font-size: 11.5px;
+      color: #4b5563;
+      line-height: 1.5;
+      margin-top: 2px;
+    }
+    .inv-badge {
+      text-align: right;
+    }
+    .inv-badge .tag {
+      display: inline-block;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #f59e0b;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .inv-badge div { font-size: 12.5px; line-height: 1.6; }
+
+    .inv-customer {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+    table.inv-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      font-size: 12.5px;
+    }
+    table.inv-table th {
+      background: #1e293b;
+      color: #fff;
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 700;
+    }
+    table.inv-table td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 8px 10px;
+      vertical-align: top;
+    }
+    table.inv-table tr.total-row td {
+      border-top: 2px solid #1e293b;
+      border-bottom: 2px solid #1e293b;
+      background: #fef9e7;
+      font-weight: 800;
+      font-size: 13.5px;
+    }
+    .num { text-align: right !important; }
+    .inv-words {
+      font-size: 12.5px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-left: 3px solid #c59b27;
+      margin-bottom: 20px;
+    }
+    .inv-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px dashed #cbd5e1;
+    }
+    .qr-group { display: flex; gap: 16px; }
+    .qr-card {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 8px;
+      text-align: center;
+      background: #fff;
+    }
+    .qr-card.gold { border-color: #c59b27; background: #fffdf5; }
+    .qr-box { width: 84px; height: 84px; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; }
+    .qr-label { font-size: 10.5px; font-weight: 800; letter-spacing: 0.4px; color: #1e293b; }
+    .sig-box { text-align: center; min-width: 150px; }
+    .sig-line { border-top: 1.5px solid #1e293b; padding-top: 6px; font-size: 12px; font-weight: 700; }
+    .inv-thanks {
+      text-align: center;
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 14px;
+    }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #0f172a; color: #fff;
+      padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      opacity: 0; transform: translateY(10px); transition: all 0.2s; pointer-events: none; z-index: 200;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.78);
+      display: none; align-items: center; justify-content: center; z-index: 160; padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 16px; max-width: 520px; width: 100%; padding: 22px; }
+
+    @media print {
+      body { background: #fff; }
+      header.topbar, .no-print, .toast, .modal-backdrop { display: none !important; }
+      .layout { display: block; padding: 0; margin: 0; max-width: none; }
+      #invoice-wrap { border: none; box-shadow: none; padding: 10px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="nav-tabs">
+      <a class="nav-link" href="index.html">📦 Inventory</a>
+      <a class="nav-link active" href="sales.html">🧾 Sales &amp; Bill</a>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button class="btn" onclick="openQrSetup()">⚙ QR &amp; Sheet Setup</button>
+      <button class="btn gold" onclick="window.print()">🖨 Print / Save PDF</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Left Column: Entry Form + History -->
+    <div class="no-print" style="display:flex; flex-direction:column; gap:18px;">
+      <div class="panel">
+        <h2>New Sale Entry (Records to <code>Sold</code> Tab)</h2>
+        <div class="grid-3">
+          <div class="field">
+            <label>Bill / Invoice No</label>
+            <input type="number" id="billNo" oninput="renderInvoice()" />
+          </div>
+          <div class="field">
+            <label>Sold Date</label>
+            <input type="date" id="soldDate" oninput="renderInvoice()" />
+          </div>
+          <div class="field">
+            <label>Sold Platform</label>
+            <select id="soldPlatform">
+              <option value="Daraz">Daraz</option>
+              <option value="Insta">Insta</option>
+              <option value="Office">Office</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Facebook">Facebook</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label>Invoice To (Customer Name)</label>
+            <input type="text" id="custName" placeholder="e.g. Neha Kumari Ray" oninput="renderInvoice()" />
+          </div>
+          <div class="field">
+            <label>Daraz Code (optional)</label>
+            <input type="text" id="darazCode" placeholder="e.g. NPDZR7AGKZ-2026-046" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Customer Address (for Bill)</label>
+          <input type="text" id="custAddress" placeholder="e.g. Kalanki, Kathmandu, Nepal" oninput="renderInvoice()" />
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+          <input list="productOptions" id="quickPick" placeholder="Pick product from Sheet1 (code or name)..." style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px;" />
+          <datalist id="productOptions"></datalist>
+          <button class="btn primary" onclick="addPickedProduct()">+ Add Product</button>
+          <button class="btn" onclick="addBlankLine()">+ Blank Row</button>
+        </div>
+
+        <table class="items-editor">
+          <thead>
+            <tr>
+              <th style="width:90px;">Code</th>
+              <th>Item Name (on Bill)</th>
+              <th style="width:58px;">Qty</th>
+              <th style="width:80px;">Unit Rs</th>
+              <th style="width:80px;">Actual SP</th>
+              <th style="width:34px;"></th>
+            </tr>
+          </thead>
+          <tbody id="lineItemsBody"></tbody>
+        </table>
+
+        <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; margin-top:12px;">
+          <button class="btn" onclick="resetForm()">↺ New Blank Bill</button>
+          <button class="btn green" onclick="saveSale(false)">💾 Save to Sold Tab</button>
+          <button class="btn gold" onclick="saveSale(true)">💾 Save &amp; Print Bill</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 style="margin:0;">Recent Sales (<code>Sold</code> Tab)</h2>
+          <button class="btn" onclick="loadSales()">↻ Refresh</button>
+        </div>
+        <div class="sales-scroll">
+          <table class="sales-hist">
+            <thead>
+              <tr>
+                <th>Bill</th>
+                <th>Date</th>
+                <th>Code</th>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>SP</th>
+                <th>Platform</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="salesHistBody">
+              <tr><td colspan="8">Loading sales...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Live Printable Invoice -->
+    <div id="invoice-wrap">
+      <div class="inv-header">
+        <div class="inv-brand">
+          <img class="inv-logo" src="logo.png" alt="New Sujan Store" />
+          <div>
+            <h1 class="inv-store-name">NEW SUJAN STORE</h1>
+            <div class="inv-store-meta">
+              <strong>PAN NO:</strong> 112198408<br>
+              <strong>Address:</strong> Chamati, Kathmandu, Nepal<br>
+              <strong>Phone:</strong> 9851237839 &nbsp;|&nbsp; <strong>Mail:</strong> sujan.store.np@gmail.com
+            </div>
+          </div>
+        </div>
+        <div class="inv-badge">
+          <div class="tag">INVOICE</div>
+          <div><strong>Invoice No:</strong> <span id="vBillNo">-</span></div>
+          <div><strong>Invoice Date:</strong> <span id="vDate">-</span></div>
+        </div>
+      </div>
+
+      <div class="inv-customer">
+        <div><strong>Invoice To:</strong> <span id="vCustName">-</span></div>
+        <div><strong>Address:</strong> <span id="vCustAddr">-</span></div>
+      </div>
+
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th style="width:45px;">SN</th>
+            <th>Item Name</th>
+            <th class="num" style="width:70px;">Qty</th>
+            <th class="num" style="width:110px;">Price/Unit (Rs)</th>
+            <th class="num" style="width:105px;">Amount (Rs)</th>
+          </tr>
+        </thead>
+        <tbody id="vItemsBody"></tbody>
+      </table>
+
+      <div class="inv-words">
+        <strong>Invoice Amount in Words:</strong> <span id="vWords">Zero Only</span>
+      </div>
+
+      <div class="inv-footer">
+        <div class="qr-group">
+          <div class="qr-card gold">
+            <div class="qr-box" id="qrLinks"></div>
+            <div class="qr-label">LINKS &amp; CATALOG</div>
+          </div>
+          <div class="qr-card">
+            <div class="qr-box" id="qrDaraz"></div>
+            <div class="qr-label">DARAZ STORE</div>
+          </div>
+        </div>
+        <div class="sig-box">
+          <div style="height:46px;"></div>
+          <div class="sig-line">Authorized Signatory</div>
+        </div>
+      </div>
+      <div class="inv-thanks">Thank you for your business! • Free delivery inside Kathmandu Valley</div>
+    </div>
+  </div>
+
+  <!-- Setup Modal -->
+  <div class="modal-backdrop" id="setupModal" onclick="if(event.target===this) closeQrSetup()">
+    <div class="modal-box">
+      <h2 style="margin-top:0;">QR Links &amp; Sheet Setup</h2>
+      <div class="field">
+        <label>Apps Script Web App URL</label>
+        <input type="text" id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+      </div>
+      <div class="field">
+        <label>Optional PIN</label>
+        <input type="password" id="cfgPin" />
+      </div>
+      <div class="field">
+        <label>Links / Catalog QR URL</label>
+        <input type="text" id="cfgQrLinks" />
+      </div>
+      <div class="field">
+        <label>Daraz Store QR URL</label>
+        <input type="text" id="cfgQrDaraz" />
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+        <button class="btn" onclick="closeQrSetup()">Cancel</button>
+        <button class="btn primary" onclick="saveQrSetup()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_URL = "sujan_gas_url";
+    const STORAGE_PIN = "sujan_gas_pin";
+    const STORAGE_QR_LINKS = "sujan_qr_links";
+    const STORAGE_QR_DARAZ = "sujan_qr_daraz";
+
+    const DEFAULT_QR_LINKS = "https://rojansthapit.github.io/sujan-store-catalog/";
+    const DEFAULT_QR_DARAZ = "https://www.daraz.com.np/";
+
+    let products = [];
+    let allSales = [];
+    let lineItems = [];
+
+    function getConfig() {
+      return {
+        url: localStorage.getItem(STORAGE_URL) || "",
+        pin: localStorage.getItem(STORAGE_PIN) || "",
+        qrLinks: localStorage.getItem(STORAGE_QR_LINKS) || DEFAULT_QR_LINKS,
+        qrDaraz: localStorage.getItem(STORAGE_QR_DARAZ) || DEFAULT_QR_DARAZ,
+      };
+    }
+
+    function openQrSetup() {
+      const c = getConfig();
+      document.getElementById("cfgUrl").value = c.url;
+      document.getElementById("cfgPin").value = c.pin;
+      document.getElementById("cfgQrLinks").value = c.qrLinks;
+      document.getElementById("cfgQrDaraz").value = c.qrDaraz;
+      document.getElementById("setupModal").classList.add("open");
+    }
+
+    function closeQrSetup() {
+      document.getElementById("setupModal").classList.remove("open");
+    }
+
+    function saveQrSetup() {
+      localStorage.setItem(STORAGE_URL, document.getElementById("cfgUrl").value.trim());
+      localStorage.setItem(STORAGE_PIN, document.getElementById("cfgPin").value.trim());
+      localStorage.setItem(STORAGE_QR_LINKS, document.getElementById("cfgQrLinks").value.trim() || DEFAULT_QR_LINKS);
+      localStorage.setItem(STORAGE_QR_DARAZ, document.getElementById("cfgQrDaraz").value.trim() || DEFAULT_QR_DARAZ);
+      closeQrSetup();
+      renderQRCodes();
+      loadAll();
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove("show"), 2300);
+    }
+
+    function renderQRCodes() {
+      const c = getConfig();
+      const q1 = document.getElementById("qrLinks");
+      const q2 = document.getElementById("qrDaraz");
+      q1.innerHTML = "";
+      q2.innerHTML = "";
+      if (typeof QRCode !== "undefined") {
+        new QRCode(q1, { text: c.qrLinks, width: 82, height: 82, colorDark: "#92400e", colorLight: "#fffdf5", correctLevel: QRCode.CorrectLevel.M });
+        new QRCode(q2, { text: c.qrDaraz, width: 82, height: 82, colorDark: "#0f172a", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+      }
+    }
+
+    function numberToWords(num) {
+      num = Math.round(Number(num) || 0);
+      if (num === 0) return "Zero Only";
+      const a = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+        "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+      const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+      function two(n) {
+        if (n < 20) return a[n];
+        return b[Math.floor(n / 10)] + (n % 10 ? " " + a[n % 10] : "");
+      }
+      function three(n) {
+        const h = Math.floor(n / 100);
+        const rem = n % 100;
+        return (h ? a[h] + " Hundred" + (rem ? " " : "") : "") + (rem ? two(rem) : "");
+      }
+      let res = "";
+      const crore = Math.floor(num / 10000000);
+      num %= 10000000;
+      const lakh = Math.floor(num / 100000);
+      num %= 100000;
+      const thou = Math.floor(num / 1000);
+      num %= 1000;
+      if (crore) res += two(crore) + " Crore ";
+      if (lakh) res += two(lakh) + " Lakh ";
+      if (thou) res += two(thou) + " Thousand ";
+      if (num) res += three(num);
+      return res.trim() + " Only";
+    }
+
+    async function loadAll() {
+      const cfg = getConfig();
+      if (!cfg.url) {
+        openQrSetup();
+        return;
+      }
+      await Promise.all([loadProductsList(), loadSales()]);
+    }
+
+    async function loadProductsList() {
+      const cfg = getConfig();
+      const u = new URL(cfg.url);
+      if (cfg.pin) u.searchParams.set("pin", cfg.pin);
+      const res = await fetch(u.toString());
+      const data = await res.json();
+      if (data.ok) {
+        products = data.products;
+        document.getElementById("productOptions").innerHTML = products
+          .map(p => `<option value="${p.code} — ${p.name}"></option>`)
+          .join("");
+      }
+    }
+
+    async function loadSales() {
+      const cfg = getConfig();
+      const u = new URL(cfg.url);
+      u.searchParams.set("mode", "sales");
+      if (cfg.pin) u.searchParams.set("pin", cfg.pin);
+      const res = await fetch(u.toString());
+      const data = await res.json();
+      if (!data.ok) {
+        showToast("Error: " + data.error);
+        return;
+      }
+      allSales = data.sales || [];
+      if (!document.getElementById("billNo").value) {
+        document.getElementById("billNo").value = data.next_bill_no || 1;
+      }
+      renderSalesHistory();
+      renderInvoice();
+    }
+
+    function renderSalesHistory() {
+      const tbody = document.getElementById("salesHistBody");
+      if (!allSales.length) {
+        tbody.innerHTML = '<tr><td colspan="8">No sales recorded yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = allSales.slice(0, 40).map(s => `
+        <tr>
+          <td><strong>#${s.bill_no}</strong></td>
+          <td>${s.sold_date}</td>
+          <td>${s.code}</td>
+          <td>${s.name}</td>
+          <td>${s.qty}</td>
+          <td>${s.sp}</td>
+          <td>${s.platform}</td>
+          <td><button class="btn" style="padding:3px 8px; font-size:11px;" onclick="loadBillToPreview('${s.bill_no}')">🖨 Bill</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function loadBillToPreview(billNo) {
+      const matched = allSales.filter(s => String(s.bill_no) === String(billNo));
+      if (!matched.length) return;
+      const first = matched[0];
+      document.getElementById("billNo").value = first.bill_no;
+      if (first.sold_date) document.getElementById("soldDate").value = first.sold_date;
+      if (first.platform) document.getElementById("soldPlatform").value = first.platform;
+      document.getElementById("darazCode").value = first.daraz_code || "";
+      lineItems = matched.map(m => {
+        const prod = products.find(p => p.code === m.code);
+        const unit = m.daraz || (m.qty ? Math.round((m.sp / m.qty) * 100) / 100 : m.sp);
+        return {
+          code: m.code,
+          name: (prod && prod.name) ? prod.name : m.name,
+          shortName: m.name,
+          qty: m.qty || 1,
+          unitPrice: unit,
+          cp: m.cp || 0,
+          sp: m.sp || unit,
+        };
+      });
+      renderLineEditor();
+      renderInvoice();
+      showToast(`Loaded Bill #${billNo}`);
+    }
+
+    function addPickedProduct() {
+      const val = document.getElementById("quickPick").value.trim();
+      if (!val) return;
+      const code = val.split(" — ")[0].trim();
+      const prod = products.find(p => p.code.toLowerCase() === code.toLowerCase()) ||
+                   products.find(p => p.name.toLowerCase().includes(val.toLowerCase()));
+      if (!prod) {
+        lineItems.push({ code: "", name: val, shortName: val, qty: 1, unitPrice: 0, cp: 0, sp: 0 });
+      } else {
+        const unit = Number(prod.daraz_sp) || Number(prod.price) || 0;
+        const cp = Number(prod.cost) || 0;
+        lineItems.push({
+          code: prod.code,
+          name: prod.name || prod.code,
+          shortName: prod.group || prod.name || prod.code,
+          qty: 1,
+          unitPrice: unit,
+          cp: cp,
+          sp: unit,
+        });
+      }
+      document.getElementById("quickPick").value = "";
+      renderLineEditor();
+      renderInvoice();
+    }
+
+    function addBlankLine() {
+      lineItems.push({ code: "", name: "", shortName: "", qty: 1, unitPrice: 0, cp: 0, sp: 0 });
+      renderLineEditor();
+      renderInvoice();
+    }
+
+    function updateLine(idx, field, val) {
+      const it = lineItems[idx];
+      if (!it) return;
+      if (field === "qty" || field === "unitPrice") {
+        it[field] = Number(val) || 0;
+        it.sp = it.qty * it.unitPrice;
+      } else if (field === "sp") {
+        it.sp = Number(val) || 0;
+      } else {
+        it[field] = val;
+      }
+      renderLineEditor();
+      renderInvoice();
+    }
+
+    function removeLine(idx) {
+      lineItems.splice(idx, 1);
+      renderLineEditor();
+      renderInvoice();
+    }
+
+    function renderLineEditor() {
+      const tbody = document.getElementById("lineItemsBody");
+      if (!lineItems.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b; text-align:center;">Add a product above</td></tr>';
+        return;
+      }
+      tbody.innerHTML = lineItems.map((it, i) => `
+        <tr>
+          <td><input value="${it.code}" onchange="updateLine(${i}, 'code', this.value)" /></td>
+          <td><input value="${it.name}" onchange="updateLine(${i}, 'name', this.value)" /></td>
+          <td><input type="number" min="1" value="${it.qty}" onchange="updateLine(${i}, 'qty', this.value)" /></td>
+          <td><input type="number" value="${it.unitPrice}" onchange="updateLine(${i}, 'unitPrice', this.value)" /></td>
+          <td><input type="number" value="${it.sp}" onchange="updateLine(${i}, 'sp', this.value)" /></td>
+          <td><button class="btn" style="padding:3px 7px; color:var(--red);" onclick="removeLine(${i})">✕</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderInvoice() {
+      document.getElementById("vBillNo").textContent = document.getElementById("billNo").value || "-";
+      document.getElementById("vDate").textContent = document.getElementById("soldDate").value || "-";
+      document.getElementById("vCustName").textContent = document.getElementById("custName").value || "Walk-in Customer";
+      document.getElementById("vCustAddr").textContent = document.getElementById("custAddress").value || "Kathmandu, Nepal";
+
+      const tbody = document.getElementById("vItemsBody");
+      let total = 0;
+      if (!lineItems.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b;">No items added</td></tr>';
+      } else {
+        tbody.innerHTML = lineItems.map((it, i) => {
+          const amt = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+          total += amt;
+          return `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${it.name || it.code || "-"}</td>
+              <td class="num">${it.qty}</td>
+              <td class="num">${it.unitPrice}</td>
+              <td class="num">${amt}</td>
+            </tr>
+          `;
+        }).join("") + `
+          <tr class="total-row">
+            <td colspan="4" class="num">Total (Rs)</td>
+            <td class="num">${total}</td>
+          </tr>
+        `;
+      }
+      document.getElementById("vWords").textContent = numberToWords(total);
+    }
+
+    async function saveSale(andPrint) {
+      if (!lineItems.length) {
+        alert("Please add at least one item.");
+        return;
+      }
+      const cfg = getConfig();
+      showToast("Saving sale to Sold tab...");
+      const payload = {
+        action: "add_sale",
+        pin: cfg.pin,
+        bill_no: Number(document.getElementById("billNo").value) || 0,
+        sold_date: document.getElementById("soldDate").value,
+        platform: document.getElementById("soldPlatform").value,
+        daraz_code: document.getElementById("darazCode").value.trim(),
+        items: lineItems.map(it => ({
+          code: it.code,
+          name: it.shortName || it.name,
+          qty: it.qty,
+          daraz: it.unitPrice,
+          cp: it.cp,
+          sp: it.sp,
+        })),
+      };
+      const res = await fetch(cfg.url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload),
+      });
+      const out = await res.json();
+      if (!out.ok) {
+        showToast("Error: " + out.error);
+        return;
+      }
+      showToast(`Saved Bill #${out.bill_no} (${out.count} item(s))`);
+      await loadSales();
+      if (andPrint) window.print();
+    }
+
+    function resetForm() {
+      const maxBill = allSales.reduce((m, s) => Math.max(m, Number(s.bill_no) || 0), 0);
+      document.getElementById("billNo").value = maxBill + 1;
+      document.getElementById("custName").value = "";
+      document.getElementById("custAddress").value = "";
+      document.getElementById("darazCode").value = "";
+      lineItems = [];
+      renderLineEditor();
+      renderInvoice();
+    }
+
+    document.getElementById("soldDate").value = new Date().toISOString().slice(0, 10);
+    renderQRCodes();
+    renderLineEditor();
+    renderInvoice();
+    loadAll();
+  </script>
+</body>
+</html>
