@@ -87,21 +87,33 @@ function doPost(e) {
     const colA = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 1).getValues() : [];
     let targetRow = 2;
     let maxSn = 0;
+    let maxCodeNum = 0;
+    let codePrefix = "SS25-";
     for (let i = 0; i < colB.length; i++) {
-      if (String(colB[i][0] || "").trim()) {
+      const codeStr = String(colB[i][0] || "").trim();
+      if (codeStr) {
         targetRow = i + 3;
+        const m = codeStr.match(/^(.*?)(\d+)$/);
+        if (m) {
+          const n = parseInt(m[2], 10);
+          if (n > maxCodeNum) {
+            maxCodeNum = n;
+            codePrefix = m[1];
+          }
+        }
       }
       const snVal = Number(colA[i][0]);
       if (!isNaN(snVal) && snVal > maxSn) maxSn = snVal;
     }
 
+    const pdtCode = String(payload.code || "").trim() || (codePrefix + String((maxCodeNum > 0 ? maxCodeNum + 2 : 1)).padStart(3, "0"));
     const cost = Number(payload.cost) || 0;
     const darazSp = Number(payload.daraz_sp) || 0;
     const commRate = payload.daraz_comm !== undefined && payload.daraz_comm !== "" ? Number(payload.daraz_comm) : 0.3;
 
     sheet.getRange(targetRow, 1, 1, 14).setValues([[
       maxSn + 1,
-      String(payload.code || "").trim(),
+      pdtCode,
       cost,
       darazSp,
       commRate,

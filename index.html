@@ -546,11 +546,28 @@
 
     let editingRow = null;
 
+    function getNextPdtCode() {
+      let maxNum = 0;
+      let prefix = "SS25-";
+      for (const p of allProducts) {
+        const m = String(p.code || "").match(/^(.*?)(\d+)$/);
+        if (m) {
+          const n = parseInt(m[2], 10);
+          if (n > maxNum) {
+            maxNum = n;
+            prefix = m[1];
+          }
+        }
+      }
+      const nextNum = maxNum > 0 ? maxNum + 2 : 1;
+      return prefix + String(nextNum).padStart(3, "0");
+    }
+
     function openProductModal(row = null) {
       editingRow = row;
       const p = row ? allProducts.find(x => x.row === row) : null;
       document.getElementById("pmTitle").textContent = p ? `Edit ${p.code}` : "Add New Product";
-      document.getElementById("pmCode").value = p ? p.code : "";
+      document.getElementById("pmCode").value = p ? p.code : getNextPdtCode();
       document.getElementById("pmGroup").value = p ? p.group : "";
       document.getElementById("pmName").value = p ? p.name : "";
       document.getElementById("pmCost").value = p ? p.cost : "";
