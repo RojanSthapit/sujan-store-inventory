@@ -61,7 +61,7 @@ function doGet(e) {
     const soldSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INV_SOLD_SHEET_NAME);
     const lastRow = soldSheet.getLastRow();
     if (lastRow < 2) return invJsonOut_({ ok: true, sales: [], next_bill_no: 1 });
-    const vals = soldSheet.getRange(2, 1, lastRow - 1, 12).getValues();
+    const vals = soldSheet.getRange(2, 1, lastRow - 1, 15).getValues();
     const sales = [];
     let maxBill = 0;
     for (let i = 0; i < vals.length; i++) {
@@ -91,6 +91,9 @@ function doGet(e) {
         sold_date: dateStr,
         platform: String(r[10] || "").trim(),
         daraz_code: String(r[11] || "").trim(),
+        customer_name: String(r[12] || "").trim(),
+        customer_address: String(r[13] || "").trim(),
+        pan_vat: String(r[14] || "").trim(),
       });
     }
     return invJsonOut_({ ok: true, sales: sales.reverse(), next_bill_no: maxBill + 1 });
@@ -308,6 +311,9 @@ function doPost(e) {
     const soldDate = payload.sold_date ? new Date(payload.sold_date + "T00:00:00") : new Date();
     const platform = String(payload.platform || "Office").trim();
     const darazCode = String(payload.daraz_code || "").trim();
+    const custName = String(payload.customer_name || "").trim();
+    const custAddr = String(payload.customer_address || "").trim();
+    const panVat = String(payload.pan_vat || "").trim();
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -316,7 +322,7 @@ function doPost(e) {
       const darazPrice = Number(it.daraz) || 0;
       const cp = Number(it.cp) || 0;
       const sp = Number(it.sp) || 0;
-      soldSheet.getRange(r, 1, 1, 12).setValues([[
+      soldSheet.getRange(r, 1, 1, 15).setValues([[
         billNo,
         String(it.code || "").trim(),
         String(it.name || "").trim(),
@@ -329,6 +335,9 @@ function doPost(e) {
         soldDate,
         platform,
         darazCode,
+        custName,
+        custAddr,
+        panVat,
       ]]);
     }
     return invJsonOut_({ ok: true, bill_no: billNo, start_row: targetRow, count: items.length });
