@@ -418,9 +418,9 @@
 
         allProducts = data.products.map(p => {
           const ids = imagesMap[p.code] || [];
-          const imgs = ids.map(id => driveThumb(id, 600));
-          const fullImgs = ids.map(id => driveThumb(id, 1200));
-          const fallbackImgs = ids.map(id => driveDirect(id));
+          const imgs = ids.map(id => (id.startsWith("thumbs/") || id.startsWith("http")) ? id : driveThumb(id, 600));
+          const fullImgs = ids.map(id => (id.startsWith("thumbs/") || id.startsWith("http")) ? id : driveThumb(id, 1200));
+          const fallbackImgs = ids.map(id => (id.startsWith("thumbs/") || id.startsWith("http")) ? id : driveDirect(id));
           if (!imgs.length && p.image_url) {
             imgs.push(p.image_url);
             fullImgs.push(p.image_url);
