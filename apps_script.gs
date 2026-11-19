@@ -1,5 +1,3 @@
-// Paste this into Extensions -> Apps Script in your "Sujan Store List" Google Sheet.
-// Optional: set a PIN (e.g. "1234") so only you can view/edit via the web app.
 const ACCESS_PIN = "";
 const SHEET_NAME = "Sheet1";
 
