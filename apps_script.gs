@@ -1,5 +1,6 @@
 const INV_ACCESS_PIN = "";
 const INV_SHEET_NAME = "Sheet1";
+const INV_DRIVE_FOLDER_ID = "1-4hk_FmRbfv6MCCA2LWbcdBhT7dkduq8";
 
 function invCheckPin_(pin) {
   if (!INV_ACCESS_PIN) return true;
@@ -10,6 +11,42 @@ function invJsonOut_(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function invFindDriveImageForCode_(pdtCode) {
+  try {
+    const root = DriveApp.getFolderById(INV_DRIVE_FOLDER_ID);
+    const folders = root.getFoldersByName(pdtCode);
+    if (!folders.hasNext()) return { inDrive: false, imageUrl: "" };
+    const folder = folders.next();
+    const files = folder.getFiles();
+    const imgNames = [];
+    while (files.hasNext()) {
+      const f = files.next();
+      const name = f.getName().toLowerCase();
+      if (/\.(jpg|jpeg|png|webp|gif)$/.test(name)) {
+        imgNames.push({ name: f.getName(), id: f.getId() });
+      }
+    }
+    if (!imgNames.length) return { inDrive: true, imageUrl: "" };
+    imgNames.sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      inDrive: true,
+      imageUrl: "https://drive.google.com/thumbnail?id=" + imgNames[0].id + "&sz=w800",
+    };
+  } catch (err) {
+    return { inDrive: false, imageUrl: "" };
+  }
+}
+
+function invNormalizeDriveUrl_(url) {
+  const s = String(url || "").trim();
+  if (!s) return "";
+  const m = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m && s.indexOf("drive.google.com") !== -1) {
+    return "https://drive.google.com/thumbnail?id=" + m[1] + "&sz=w800";
+  }
+  return s;
 }
 
 function doGet(e) {
@@ -111,6 +148,14 @@ function doPost(e) {
     const darazSp = Number(payload.daraz_sp) || 0;
     const commRate = payload.daraz_comm !== undefined && payload.daraz_comm !== "" ? Number(payload.daraz_comm) : 0.3;
 
+    let imageUrl = invNormalizeDriveUrl_(payload.image_url);
+    let inDrive = Boolean(payload.in_drive);
+    if (!imageUrl) {
+      const driveInfo = invFindDriveImageForCode_(pdtCode);
+      if (driveInfo.inDrive) inDrive = true;
+      if (driveInfo.imageUrl) imageUrl = driveInfo.imageUrl;
+    }
+
     sheet.getRange(targetRow, 1, 1, 14).setValues([[
       maxSn + 1,
       pdtCode,
@@ -124,27 +169,73 @@ function doPost(e) {
       String(payload.name || "").trim(),
       "",
       String(payload.status || "").trim(),
-      Boolean(payload.in_drive),
-      String(payload.image_url || "").trim(),
+      inDrive,
+      imageUrl,
     ]]);
     sheet.getRange(targetRow, 13).insertCheckboxes();
-    return invJsonOut_({ ok: true, row: targetRow });
+    return invJsonOut_({ ok: true, row: targetRow, code: pdtCode, image_url: imageUrl, in_drive: inDrive });
   }
 
   if (action === "edit_product") {
     const row = Number(payload.row);
     if (!row || row < 2) return invJsonOut_({ ok: false, error: "Invalid row" });
-    sheet.getRange(row, 2).setValue(String(payload.code || "").trim());
+    const pdtCode = String(payload.code || "").trim();
+    let imageUrl = invNormalizeDriveUrl_(payload.image_url);
+    let inDrive = Boolean(payload.in_drive);
+    if (!imageUrl && pdtCode) {
+      const driveInfo = invFindDriveImageForCode_(pdtCode);
+      if (driveInfo.inDrive) inDrive = true;
+      if (driveInfo.imageUrl) imageUrl = driveInfo.imageUrl;
+    }
+
+    sheet.getRange(row, 2).setValue(pdtCode);
     sheet.getRange(row, 3).setValue(Number(payload.cost) || 0);
     sheet.getRange(row, 4).setValue(Number(payload.daraz_sp) || 0);
     sheet.getRange(row, 9).setValue(String(payload.group || "").trim());
     sheet.getRange(row, 10).setValue(String(payload.name || "").trim());
     sheet.getRange(row, 12).setValue(String(payload.status || "").trim());
-    sheet.getRange(row, 13).setValue(Boolean(payload.in_drive));
-    if (payload.image_url !== undefined) {
-      sheet.getRange(row, 14).setValue(String(payload.image_url || "").trim());
+    sheet.getRange(row, 13).setValue(inDrive);
+    sheet.getRange(row, 14).setValue(imageUrl);
+    return invJsonOut_({ ok: true, row: row, image_url: imageUrl, in_drive: inDrive });
+  }
+
+  if (action === "sync_drive_images") {
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return invJsonOut_({ ok: true, updated: 0 });
+    const root = DriveApp.getFolderById(INV_DRIVE_FOLDER_ID);
+    const sub = root.getFolders();
+    const driveMap = {};
+    while (sub.hasNext()) {
+      const f = sub.next();
+      driveMap[f.getName().trim()] = f;
     }
-    return invJsonOut_({ ok: true, row: row });
+    const vals = sheet.getRange(2, 1, lastRow - 1, 14).getValues();
+    let updated = 0;
+    for (let i = 0; i < vals.length; i++) {
+      const code = String(vals[i][1] || "").trim();
+      if (!code || !driveMap[code]) continue;
+      const hasImg = String(vals[i][13] || "").trim();
+      const inDrive = vals[i][12] === true || String(vals[i][12]).toUpperCase() === "TRUE";
+      if (!inDrive) {
+        sheet.getRange(i + 2, 13).setValue(true);
+      }
+      if (!hasImg) {
+        const files = driveMap[code].getFiles();
+        const imgs = [];
+        while (files.hasNext()) {
+          const file = files.next();
+          if (/\.(jpg|jpeg|png|webp|gif)$/i.test(file.getName())) {
+            imgs.push({ name: file.getName(), id: file.getId() });
+          }
+        }
+        if (imgs.length) {
+          imgs.sort((a, b) => a.name.localeCompare(b.name));
+          sheet.getRange(i + 2, 14).setValue("https://drive.google.com/thumbnail?id=" + imgs[0].id + "&sz=w800");
+          updated++;
+        }
+      }
+    }
+    return invJsonOut_({ ok: true, updated: updated });
   }
 
   if (action === "delete_product") {

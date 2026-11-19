@@ -202,6 +202,7 @@
         <button class="pill-btn" data-drive="no">Not in Drive</button>
       </div>
       <button class="primary-btn" style="background:var(--green); border-color:var(--green);" onclick="openProductModal()">+ Add Product</button>
+      <button class="pill-btn" onclick="syncDriveImages()">☁ Sync Drive</button>
       <button class="primary-btn" onclick="loadProducts()">↻ Refresh</button>
       <button class="pill-btn" onclick="openSetup()">⚙ Setup</button>
       <button class="pill-btn" onclick="resetSetup()">↺ Reset Setup</button>
@@ -283,8 +284,8 @@
         </div>
       </div>
       <div class="field">
-        <label>Image URL (optional, Col N)</label>
-        <input type="text" id="pmImageUrl" placeholder="https://drive.google.com/thumbnail?id=...&sz=w800" />
+        <label>Image URL (optional — leave blank to auto-link from Google Drive)</label>
+        <input type="text" id="pmImageUrl" placeholder="Auto-linked from Drive folder, or paste Drive link" />
       </div>
       <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
         <button class="pill-btn" onclick="closeProductModal()">Cancel</button>
@@ -624,6 +625,17 @@
         return;
       }
       showToast(`Deleted ${p.code}`);
+      await loadProducts();
+    }
+
+    async function syncDriveImages() {
+      showToast("Syncing Drive folders to Sheet...");
+      const out = await postUpdate({ action: "sync_drive_images" });
+      if (!out.ok) {
+        showToast("Error: " + out.error);
+        return;
+      }
+      showToast(`Linked ${out.updated} product image(s) from Drive`);
       await loadProducts();
     }
 
