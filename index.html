@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sujan Store — Inventory Manager</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --green: #16a34a;
+      --green-bg: #dcfce7;
+      --red: #dc2626;
+      --red-bg: #fee2e2;
+      --amber: #d97706;
+      --amber-bg: #fef3c7;
+      --blue: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    .header-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .title-wrap h1 { margin: 0; font-size: 20px; font-weight: 700; }
+    .title-wrap p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+    .stats { display: flex; flex-wrap: wrap; gap: 8px; }
+    .stat-pill {
+      font-size: 12px; font-weight: 600; padding: 6px 12px;
+      border-radius: 999px; background: #f1f5f9; color: var(--text);
+    }
+    .stat-pill.green { background: var(--green-bg); color: var(--green); }
+    .stat-pill.red { background: var(--red-bg); color: var(--red); }
+    .stat-pill.amber { background: var(--amber-bg); color: var(--amber); }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    input[type="text"], input[type="password"], select {
+      padding: 8px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 14px; background: #fff; color: var(--text);
+    }
+    input[type="text"]#search { min-width: 220px; flex: 1; max-width: 320px; }
+    .filter-group { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill-btn {
+      border: 1px solid var(--border); background: #fff; color: var(--text);
+      padding: 7px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .pill-btn:hover { background: #f8fafc; }
+    .pill-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+    .primary-btn {
+      border: 1px solid var(--blue); background: var(--blue); color: #fff;
+      padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .primary-btn:hover { opacity: 0.92; }
+
+    main { padding: 20px 20px 48px; max-width: 1600px; margin: 0 auto; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: var(--card); border: 2px solid var(--border); border-radius: 14px;
+      overflow: hidden; display: flex; flex-direction: column;
+      transition: box-shadow 0.12s, border-color 0.15s;
+    }
+    .card:hover { box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); }
+    .card.status-available { border-color: #86efac; }
+    .card.status-not-available { border-color: #fca5a5; opacity: 0.88; }
+
+    .img-box {
+      position: relative; width: 100%; aspect-ratio: 1 / 1; background: #f8fafc;
+      display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: zoom-in;
+    }
+    .img-box img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .no-img { color: var(--muted); font-size: 13px; text-align: center; padding: 16px; }
+    .img-nav {
+      position: absolute; bottom: 8px; right: 8px; display: flex; align-items: center; gap: 4px;
+      background: rgba(15, 23, 42, 0.72); color: #fff; padding: 3px 8px;
+      border-radius: 999px; font-size: 11px; font-weight: 600;
+    }
+    .img-nav button { background: none; border: none; color: #fff; cursor: pointer; font-size: 13px; padding: 0 4px; }
+    .badge-top {
+      position: absolute; top: 8px; left: 8px; font-size: 11px; font-weight: 700;
+      padding: 4px 8px; border-radius: 6px; background: rgba(15, 23, 42, 0.78); color: #fff;
+    }
+    .badge-status {
+      position: absolute; top: 8px; right: 8px; font-size: 11px; font-weight: 700;
+      padding: 4px 8px; border-radius: 6px;
+    }
+    .badge-status.avail { background: var(--green); color: #fff; }
+    .badge-status.unavail { background: var(--red); color: #fff; }
+    .badge-status.unmarked { background: var(--amber-bg); color: var(--amber); }
+
+    .card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .meta-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+    .pdt-name { font-size: 15px; font-weight: 700; line-height: 1.3; }
+    .price-row { display: flex; gap: 10px; font-size: 12px; color: var(--muted); }
+    .price-row strong { color: var(--text); }
+    .actions { margin-top: auto; padding-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-avail, .btn-unavail {
+      padding: 8px 6px; border-radius: 8px; font-size: 12px; font-weight: 700;
+      cursor: pointer; border: 1px solid var(--border); background: #fff;
+    }
+    .btn-avail:hover { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+    .btn-unavail:hover { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+    .btn-avail.active { background: var(--green); color: #fff; border-color: var(--green); }
+    .btn-unavail.active { background: var(--red); color: #fff; border-color: var(--red); }
+
+    .drive-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; color: var(--muted); padding-top: 4px; border-top: 1px solid #f1f5f9;
+    }
+    .drive-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
+    .clear-link { background: none; border: none; color: var(--muted); font-size: 11px; cursor: pointer; text-decoration: underline; }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #0f172a; color: #fff;
+      padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      opacity: 0; transform: translateY(10px); transition: all 0.2s; pointer-events: none; z-index: 200;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.78);
+      display: none; align-items: center; justify-content: center; z-index: 160; padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 16px; max-width: 560px; width: 100%; padding: 22px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    }
+    .modal-box h2 { margin: 0 0 8px; font-size: 18px; }
+    .modal-box p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .field { margin: 12px 0; display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 12px; font-weight: 700; }
+
+    .lightbox-inner {
+      background: #fff; border-radius: 16px; max-width: 900px; width: 100%; max-height: 92vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .lightbox-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+    .lightbox-img-wrap {
+      position: relative; background: #f8fafc; height: 62vh;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .lightbox-img-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .lb-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(15, 23, 42, 0.7); color: #fff; border: none;
+      width: 40px; height: 40px; border-radius: 50%; font-size: 20px; cursor: pointer;
+    }
+    .lb-arrow.prev { left: 12px; }
+    .lb-arrow.next { right: 12px; }
+    .lightbox-foot {
+      padding: 14px 18px; display: flex; flex-wrap: wrap; justify-content: space-between;
+      align-items: center; gap: 12px; border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-top">
+      <div class="title-wrap">
+        <h1>Sujan Store — Inventory Manager</h1>
+        <p id="connStatus">Not connected to Google Sheet</p>
+      </div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="controls">
+      <input type="text" id="search" placeholder="Search Pdt Code or Product Name..." />
+      <select id="groupFilter"><option value="">All Groups</option></select>
+      <div class="filter-group" id="statusFilters">
+        <button class="pill-btn active" data-status="all">All</button>
+        <button class="pill-btn" data-status="Available">Available</button>
+        <button class="pill-btn" data-status="Not Available">Not Available</button>
+        <button class="pill-btn" data-status="unmarked">Unmarked</button>
+      </div>
+      <div class="filter-group" id="driveFilters">
+        <button class="pill-btn active" data-drive="all">All Drive</button>
+        <button class="pill-btn" data-drive="yes">In Drive</button>
+        <button class="pill-btn" data-drive="no">Not in Drive</button>
+      </div>
+      <button class="primary-btn" onclick="loadProducts()">↻ Refresh</button>
+      <button class="pill-btn" onclick="openSetup()">⚙ Setup</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid" id="grid">Loading...</div>
+  </main>
+
+  <!-- Setup Modal -->
+  <div class="modal-backdrop" id="setupModal" onclick="if(event.target===this) closeSetup()">
+    <div class="modal-box">
+      <h2>Connect to Google Sheet</h2>
+      <p>
+        1. Open your <strong>Sujan Store List</strong> Google Sheet → <strong>Extensions → Apps Script</strong>.<br>
+        2. Paste the code from <code>apps_script.gs</code> in this repository and click <strong>Deploy → New deployment → Web app</strong> (Who has access: <em>Anyone</em>).<br>
+        3. Paste the Web App URL below. (Saved only in your browser's local storage.)
+      </p>
+      <div class="field">
+        <label>Apps Script Web App URL</label>
+        <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
+      </div>
+      <div class="field">
+        <label>Optional PIN (leave blank if none set)</label>
+        <input type="password" id="gasPinInput" placeholder="Optional PIN" />
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+        <button class="pill-btn" onclick="closeSetup()">Cancel</button>
+        <button class="primary-btn" onclick="saveSetup()">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="modal-backdrop" id="lightbox" onclick="if(event.target===this) closeLightbox()">
+    <div class="lightbox-inner">
+      <div class="lightbox-head">
+        <strong id="lbTitle"></strong>
+        <button class="pill-btn" onclick="closeLightbox()">✕ Close (Esc)</button>
+      </div>
+      <div class="lightbox-img-wrap">
+        <button class="lb-arrow prev" onclick="lbStep(-1)">‹</button>
+        <img id="lbImg" src="" alt="" />
+        <button class="lb-arrow next" onclick="lbStep(1)">›</button>
+      </div>
+      <div class="lightbox-foot">
+        <div id="lbMeta" style="font-size:13px; color:#475569;"></div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-avail" id="lbAvail" style="padding:8px 16px;" onclick="setStatus(lbProduct.row, 'Available')">✓ Available (A)</button>
+          <button class="btn-unavail" id="lbUnavail" style="padding:8px 16px;" onclick="setStatus(lbProduct.row, 'Not Available')">✕ Not Available (N)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_URL = "sujan_gas_url";
+    const STORAGE_PIN = "sujan_gas_pin";
+
+    let imagesMap = {};
+    let allProducts = [];
+    let statusFilter = "all";
+    let driveFilter = "all";
+    let imgIndices = {};
+    let lbProduct = null;
+    let lbImgIdx = 0;
+
+    function getConfig() {
+      return {
+        url: localStorage.getItem(STORAGE_URL) || "",
+        pin: localStorage.getItem(STORAGE_PIN) || ""
+      };
+    }
+
+    function openSetup() {
+      const cfg = getConfig();
+      document.getElementById("gasUrlInput").value = cfg.url;
+      document.getElementById("gasPinInput").value = cfg.pin;
+      document.getElementById("setupModal").classList.add("open");
+    }
+
+    function closeSetup() {
+      document.getElementById("setupModal").classList.remove("open");
+    }
+
+    function saveSetup() {
+      const url = document.getElementById("gasUrlInput").value.trim();
+      const pin = document.getElementById("gasPinInput").value.trim();
+      localStorage.setItem(STORAGE_URL, url);
+      localStorage.setItem(STORAGE_PIN, pin);
+      closeSetup();
+      loadProducts();
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove("show"), 2200);
+    }
+
+    function driveThumb(id, size = 600) {
+      return `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${size}`;
+    }
+
+    async function loadImagesJson() {
+      if (Object.keys(imagesMap).length) return;
+      try {
+        const res = await fetch("images.json");
+        imagesMap = await res.json();
+      } catch (e) {
+        imagesMap = {};
+      }
+    }
+
+    async function loadProducts() {
+      await loadImagesJson();
+      const cfg = getConfig();
+      if (!cfg.url) {
+        document.getElementById("connStatus").textContent = "Click ⚙ Setup to connect your Google Sheet";
+        document.getElementById("grid").innerHTML = "<p>Please click <strong>⚙ Setup</strong> to paste your Google Apps Script Web App URL.</p>";
+        openSetup();
+        return;
+      }
+
+      document.getElementById("grid").innerHTML = "Loading products from Google Sheet...";
+      try {
+        const u = new URL(cfg.url);
+        if (cfg.pin) u.searchParams.set("pin", cfg.pin);
+        const res = await fetch(u.toString());
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Failed to load");
+
+        allProducts = data.products.map(p => ({
+          ...p,
+          imageIds: imagesMap[p.code] || []
+        }));
+        document.getElementById("connStatus").textContent = "Connected to Google Sheet (Live Sync)";
+        populateGroups();
+        render();
+      } catch (err) {
+        document.getElementById("connStatus").textContent = "Connection error: " + err.message;
+        document.getElementById("grid").innerHTML = `<p style="color:#dc2626;">Error: ${err.message}. Check ⚙ Setup.</p>`;
+      }
+    }
+
+    function populateGroups() {
+      const sel = document.getElementById("groupFilter");
+      const current = sel.value;
+      const groups = [...new Set(allProducts.map(p => p.group).filter(Boolean))].sort();
+      sel.innerHTML = '<option value="">All Groups</option>' +
+        groups.map(g => `<option value="${g}">${g}</option>`).join("");
+      sel.value = current;
+    }
+
+    function updateStats() {
+      const total = allProducts.length;
+      const avail = allProducts.filter(p => p.status === "Available").length;
+      const unavail = allProducts.filter(p => p.status === "Not Available").length;
+      const unmarked = total - avail - unavail;
+      const inDrive = allProducts.filter(p => p.in_drive).length;
+      document.getElementById("stats").innerHTML = `
+        <span class="stat-pill">Total: ${total}</span>
+        <span class="stat-pill green">Available: ${avail}</span>
+        <span class="stat-pill red">Not Available: ${unavail}</span>
+        <span class="stat-pill amber">Unmarked: ${unmarked}</span>
+        <span class="stat-pill">In Drive: ${inDrive}</span>
+      `;
+    }
+
+    function getFiltered() {
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      const grp = document.getElementById("groupFilter").value;
+      return allProducts.filter(p => {
+        if (q && !p.code.toLowerCase().includes(q) && !p.name.toLowerCase().includes(q)) return false;
+        if (grp && p.group !== grp) return false;
+        if (statusFilter === "unmarked" && p.status !== "") return false;
+        if (statusFilter !== "all" && statusFilter !== "unmarked" && p.status !== statusFilter) return false;
+        if (driveFilter === "yes" && !p.in_drive) return false;
+        if (driveFilter === "no" && p.in_drive) return false;
+        return true;
+      });
+    }
+
+    function render() {
+      updateStats();
+      const items = getFiltered();
+      const grid = document.getElementById("grid");
+      if (!items.length) {
+        grid.innerHTML = "<p>No matching products found.</p>";
+        return;
+      }
+      grid.innerHTML = items.map(p => {
+        const idx = imgIndices[p.code] || 0;
+        const hasImgs = p.imageIds.length > 0;
+        const imgUrl = hasImgs ? driveThumb(p.imageIds[idx % p.imageIds.length], 600) : "";
+        const cardCls = p.status === "Available" ? "status-available" : (p.status === "Not Available" ? "status-not-available" : "");
+        const badgeCls = p.status === "Available" ? "avail" : (p.status === "Not Available" ? "unavail" : "unmarked");
+        const badgeTxt = p.status || "Unmarked";
+
+        return `
+          <div class="card ${cardCls}" id="card-${p.row}">
+            <div class="img-box" onclick="${hasImgs ? `openLightbox(${p.row})` : ''}">
+              <span class="badge-top">${p.code}</span>
+              <span class="badge-status ${badgeCls}">${badgeTxt}</span>
+              ${hasImgs
+                ? `<img src="${imgUrl}" loading="lazy" alt="${p.name}" />`
+                : `<div class="no-img">No Drive image<br>(${p.code})</div>`
+              }
+              ${p.imageIds.length > 1 ? `
+                <div class="img-nav" onclick="event.stopPropagation()">
+                  <button onclick="stepCardImg('${p.code}', -1)">‹</button>
+                  <span>${(idx % p.imageIds.length) + 1}/${p.imageIds.length}</span>
+                  <button onclick="stepCardImg('${p.code}', 1)">›</button>
+                </div>
+              ` : ""}
+            </div>
+            <div class="card-body">
+              <div class="meta-row">
+                <span>${p.group || "Uncategorized"}</span>
+                <span>Row ${p.row}</span>
+              </div>
+              <div class="pdt-name">${p.name || p.code}</div>
+              <div class="price-row">
+                <span>Daraz SP: <strong>${p.daraz_sp || "-"}</strong></span>
+                <span>Cost: <strong>${p.cost || "-"}</strong></span>
+                <span>Profit: <strong>${p.net_profit || "-"}</strong></span>
+              </div>
+              <div class="actions">
+                <button class="btn-avail ${p.status === 'Available' ? 'active' : ''}" onclick="setStatus(${p.row}, 'Available')">✓ Available</button>
+                <button class="btn-unavail ${p.status === 'Not Available' ? 'active' : ''}" onclick="setStatus(${p.row}, 'Not Available')">✕ Not Available</button>
+              </div>
+              <div class="drive-row">
+                <label>
+                  <input type="checkbox" ${p.in_drive ? "checked" : ""} onchange="setInDrive(${p.row}, this.checked)" />
+                  In Drive (Col M)
+                </label>
+                ${p.status ? `<button class="clear-link" onclick="setStatus(${p.row}, '')">Clear status</button>` : ""}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      if (lbProduct) {
+        const updated = allProducts.find(x => x.row === lbProduct.row);
+        if (updated) {
+          lbProduct = updated;
+          syncLightboxButtons();
+        }
+      }
+    }
+
+    function stepCardImg(code, delta) {
+      const p = allProducts.find(x => x.code === code);
+      if (!p || !p.imageIds.length) return;
+      const cur = imgIndices[code] || 0;
+      imgIndices[code] = (cur + delta + p.imageIds.length) % p.imageIds.length;
+      render();
+    }
+
+    async function postUpdate(bodyObj) {
+      const cfg = getConfig();
+      const res = await fetch(cfg.url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ ...bodyObj, pin: cfg.pin })
+      });
+      return res.json();
+    }
+
+    async function setStatus(row, status) {
+      const p = allProducts.find(x => x.row === row);
+      if (!p) return;
+      p.status = status;
+      render();
+      const out = await postUpdate({ action: "update_status", row, status });
+      if (!out.ok) showToast("Error: " + out.error);
+      else showToast(`${p.code}: ${status || "Cleared"}`);
+    }
+
+    async function setInDrive(row, inDrive) {
+      const p = allProducts.find(x => x.row === row);
+      if (!p) return;
+      p.in_drive = inDrive;
+      render();
+      const out = await postUpdate({ action: "update_in_drive", row, in_drive: inDrive });
+      if (!out.ok) showToast("Error: " + out.error);
+      else showToast(`${p.code}: In Drive = ${inDrive ? "TRUE" : "FALSE"}`);
+    }
+
+    function openLightbox(row) {
+      const p = allProducts.find(x => x.row === row);
+      if (!p || !p.imageIds.length) return;
+      lbProduct = p;
+      lbImgIdx = imgIndices[p.code] || 0;
+      updateLightbox();
+      document.getElementById("lightbox").classList.add("open");
+    }
+
+    function closeLightbox() {
+      lbProduct = null;
+      document.getElementById("lightbox").classList.remove("open");
+    }
+
+    function lbStep(delta) {
+      if (!lbProduct || !lbProduct.imageIds.length) return;
+      lbImgIdx = (lbImgIdx + delta + lbProduct.imageIds.length) % lbProduct.imageIds.length;
+      updateLightbox();
+    }
+
+    function syncLightboxButtons() {
+      document.getElementById("lbAvail").classList.toggle("active", lbProduct.status === "Available");
+      document.getElementById("lbUnavail").classList.toggle("active", lbProduct.status === "Not Available");
+    }
+
+    function updateLightbox() {
+      if (!lbProduct) return;
+      document.getElementById("lbTitle").textContent = `${lbProduct.code} — ${lbProduct.name}`;
+      document.getElementById("lbImg").src = driveThumb(lbProduct.imageIds[lbImgIdx % lbProduct.imageIds.length], 1200);
+      document.getElementById("lbMeta").textContent =
+        `Photo ${(lbImgIdx % lbProduct.imageIds.length) + 1} of ${lbProduct.imageIds.length} • Group: ${lbProduct.group} • Daraz SP: ${lbProduct.daraz_sp}`;
+      syncLightboxButtons();
+    }
+
+    document.getElementById("search").addEventListener("input", render);
+    document.getElementById("groupFilter").addEventListener("change", render);
+
+    document.querySelectorAll("#statusFilters .pill-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#statusFilters .pill-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        statusFilter = btn.dataset.status;
+        render();
+      });
+    });
+
+    document.querySelectorAll("#driveFilters .pill-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#driveFilters .pill-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        driveFilter = btn.dataset.drive;
+        render();
+      });
+    });
+
+    document.addEventListener("keydown", e => {
+      if (!lbProduct) return;
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft") lbStep(-1);
+      else if (e.key === "ArrowRight") lbStep(1);
+      else if (e.key.toLowerCase() === "a") setStatus(lbProduct.row, "Available");
+      else if (e.key.toLowerCase() === "n") setStatus(lbProduct.row, "Not Available");
+    });
+
+    loadProducts();
+  </script>
+</body>
+</html>
