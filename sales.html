@@ -268,11 +268,14 @@
     .modal-backdrop.open { display: flex; }
     .modal-box { background: #fff; border-radius: 16px; max-width: 520px; width: 100%; padding: 22px; }
 
+    @page {
+      margin: 0;
+    }
     @media print {
-      body { background: #fff; }
+      body { background: #fff; margin: 0; }
       header.topbar, .no-print, .toast, .modal-backdrop { display: none !important; }
       .layout { display: block; padding: 0; margin: 0; max-width: none; }
-      #invoice-wrap { border: none; box-shadow: none; padding: 10px 14px; }
+      #invoice-wrap { border: none; box-shadow: none; padding: 14mm 16mm; }
     }
   </style>
 </head>
