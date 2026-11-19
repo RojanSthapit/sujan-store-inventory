@@ -379,6 +379,15 @@
       return `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${size}`;
     }
 
+    function driveDirect(id) {
+      return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}`;
+    }
+
+    function driveFallbackUrl(url) {
+      const m = String(url || "").match(/thumbnail\?id=([^&]+)/);
+      return m ? `https://drive.google.com/uc?export=view&id=${m[1]}` : "";
+    }
+
     async function loadImagesJson() {
       if (Object.keys(imagesMap).length) return;
       try {
@@ -411,11 +420,13 @@
           const ids = imagesMap[p.code] || [];
           const imgs = ids.map(id => driveThumb(id, 600));
           const fullImgs = ids.map(id => driveThumb(id, 1200));
+          const fallbackImgs = ids.map(id => driveDirect(id));
           if (!imgs.length && p.image_url) {
             imgs.push(p.image_url);
             fullImgs.push(p.image_url);
+            fallbackImgs.push(driveFallbackUrl(p.image_url) || p.image_url);
           }
-          return { ...p, imgs, fullImgs };
+          return { ...p, imgs, fullImgs, fallbackImgs };
         });
         document.getElementById("connStatus").textContent = "Connected to Google Sheet (Live Sync)";
         populateGroups();
@@ -476,6 +487,7 @@
         const idx = imgIndices[p.code] || 0;
         const hasImgs = p.imgs.length > 0;
         const imgUrl = hasImgs ? p.imgs[idx % p.imgs.length] : "";
+        const fbUrl = hasImgs ? (p.fallbackImgs[idx % p.fallbackImgs.length] || "") : "";
         const cardCls = p.status === "Available" ? "status-available" : (p.status === "Not Available" ? "status-not-available" : "");
         const badgeCls = p.status === "Available" ? "avail" : (p.status === "Not Available" ? "unavail" : "unmarked");
         const badgeTxt = p.status || "Unmarked";
@@ -486,7 +498,7 @@
               <span class="badge-top">${p.code}</span>
               <span class="badge-status ${badgeCls}">${badgeTxt}</span>
               ${hasImgs
-                ? `<img src="${imgUrl}" loading="lazy" alt="${p.name}" />`
+                ? `<img src="${imgUrl}" data-fb-url="${fbUrl}" onerror="if(!this.dataset.tried && this.dataset.fbUrl){this.dataset.tried='1';this.src=this.dataset.fbUrl;}" loading="lazy" alt="${p.name}" />`
                 : `<div class="no-img">No Drive image<br>(${p.code})</div>`
               }
               ${p.imgs.length > 1 ? `
@@ -696,10 +708,20 @@
 
     function updateLightbox() {
       if (!lbProduct) return;
+      const curIdx = lbImgIdx % lbProduct.fullImgs.length;
+      const lbEl = document.getElementById("lbImg");
+      lbEl.dataset.tried = "";
+      lbEl.dataset.fbUrl = lbProduct.fallbackImgs[curIdx] || "";
+      lbEl.onerror = function() {
+        if (!this.dataset.tried && this.dataset.fbUrl) {
+          this.dataset.tried = "1";
+          this.src = this.dataset.fbUrl;
+        }
+      };
       document.getElementById("lbTitle").textContent = `${lbProduct.code} — ${lbProduct.name}`;
-      document.getElementById("lbImg").src = lbProduct.fullImgs[lbImgIdx % lbProduct.fullImgs.length];
+      lbEl.src = lbProduct.fullImgs[curIdx];
       document.getElementById("lbMeta").textContent =
-        `Photo ${(lbImgIdx % lbProduct.fullImgs.length) + 1} of ${lbProduct.fullImgs.length} • Group: ${lbProduct.group} • Daraz SP: ${lbProduct.daraz_sp}`;
+        `Photo ${curIdx + 1} of ${lbProduct.fullImgs.length} • Group: ${lbProduct.group} • Daraz SP: ${lbProduct.daraz_sp}`;
       syncLightboxButtons();
     }
 
