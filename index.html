@@ -203,6 +203,7 @@
       </div>
       <button class="primary-btn" onclick="loadProducts()">↻ Refresh</button>
       <button class="pill-btn" onclick="openSetup()">⚙ Setup</button>
+      <button class="pill-btn" onclick="resetSetup()">↺ Reset Setup</button>
     </div>
   </header>
 
@@ -227,9 +228,12 @@
         <label>Optional PIN (leave blank if none set)</label>
         <input type="password" id="gasPinInput" placeholder="Optional PIN" />
       </div>
-      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
-        <button class="pill-btn" onclick="closeSetup()">Cancel</button>
-        <button class="primary-btn" onclick="saveSetup()">Save &amp; Connect</button>
+      <div style="display:flex; gap:10px; justify-content:space-between; margin-top:16px;">
+        <button class="pill-btn" style="color:var(--red); border-color:#fca5a5;" onclick="resetSetup()">↺ Reset Setup</button>
+        <div style="display:flex; gap:10px;">
+          <button class="pill-btn" onclick="closeSetup()">Cancel</button>
+          <button class="primary-btn" onclick="saveSetup()">Save &amp; Connect</button>
+        </div>
       </div>
     </div>
   </div>
@@ -295,6 +299,16 @@
       localStorage.setItem(STORAGE_PIN, pin);
       closeSetup();
       loadProducts();
+    }
+
+    function resetSetup() {
+      localStorage.removeItem(STORAGE_URL);
+      localStorage.removeItem(STORAGE_PIN);
+      document.getElementById("gasUrlInput").value = "";
+      document.getElementById("gasPinInput").value = "";
+      allProducts = [];
+      showToast("Setup cleared");
+      openSetup();
     }
 
     function showToast(msg) {
