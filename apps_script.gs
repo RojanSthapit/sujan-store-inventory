@@ -1,12 +1,12 @@
-const ACCESS_PIN = "";
-const SHEET_NAME = "Sheet1";
+const INV_ACCESS_PIN = "";
+const INV_SHEET_NAME = "Sheet1";
 
-function checkPin_(pin) {
-  if (!ACCESS_PIN) return true;
-  return String(pin || "") === String(ACCESS_PIN);
+function invCheckPin_(pin) {
+  if (!INV_ACCESS_PIN) return true;
+  return String(pin || "") === String(INV_ACCESS_PIN);
 }
 
-function jsonOut_(obj) {
+function invJsonOut_(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
@@ -14,13 +14,13 @@ function jsonOut_(obj) {
 
 function doGet(e) {
   const pin = (e && e.parameter && e.parameter.pin) || "";
-  if (!checkPin_(pin)) {
-    return jsonOut_({ ok: false, error: "Invalid PIN" });
+  if (!invCheckPin_(pin)) {
+    return invJsonOut_({ ok: false, error: "Invalid PIN" });
   }
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INV_SHEET_NAME);
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return jsonOut_({ ok: true, products: [] });
+  if (lastRow < 2) return invJsonOut_({ ok: true, products: [] });
 
   const values = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
   const products = [];
@@ -54,29 +54,29 @@ function doGet(e) {
     });
   }
 
-  return jsonOut_({ ok: true, products: products });
+  return invJsonOut_({ ok: true, products: products });
 }
 
 function doPost(e) {
   const payload = JSON.parse((e && e.postData && e.postData.contents) || "{}");
-  if (!checkPin_(payload.pin)) {
-    return jsonOut_({ ok: false, error: "Invalid PIN" });
+  if (!invCheckPin_(payload.pin)) {
+    return invJsonOut_({ ok: false, error: "Invalid PIN" });
   }
 
   const row = Number(payload.row);
   if (!row || row < 2) {
-    return jsonOut_({ ok: false, error: "Invalid row" });
+    return invJsonOut_({ ok: false, error: "Invalid row" });
   }
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INV_SHEET_NAME);
   if (payload.action === "update_status") {
     sheet.getRange(row, 12).setValue(payload.status || "");
-    return jsonOut_({ ok: true, row: row, status: payload.status || "" });
+    return invJsonOut_({ ok: true, row: row, status: payload.status || "" });
   }
   if (payload.action === "update_in_drive") {
     sheet.getRange(row, 13).setValue(Boolean(payload.in_drive));
-    return jsonOut_({ ok: true, row: row, in_drive: Boolean(payload.in_drive) });
+    return invJsonOut_({ ok: true, row: row, in_drive: Boolean(payload.in_drive) });
   }
 
-  return jsonOut_({ ok: false, error: "Unknown action" });
+  return invJsonOut_({ ok: false, error: "Unknown action" });
 }
