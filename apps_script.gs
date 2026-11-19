@@ -22,7 +22,7 @@ function doGet(e) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return invJsonOut_({ ok: true, products: [] });
 
-  const values = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
+  const values = sheet.getRange(2, 1, lastRow - 1, 14).getValues();
   const products = [];
 
   for (let i = 0; i < values.length; i++) {
@@ -51,6 +51,7 @@ function doGet(e) {
       price: String(r[10] || "").trim(),
       status: normStatus,
       in_drive: r[12] === true || String(r[12]).toUpperCase() === "TRUE",
+      image_url: String(r[13] || "").trim(),
     });
   }
 
@@ -63,19 +64,82 @@ function doPost(e) {
     return invJsonOut_({ ok: false, error: "Invalid PIN" });
   }
 
-  const row = Number(payload.row);
-  if (!row || row < 2) {
-    return invJsonOut_({ ok: false, error: "Invalid row" });
-  }
-
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INV_SHEET_NAME);
-  if (payload.action === "update_status") {
+  const action = payload.action;
+
+  if (action === "update_status") {
+    const row = Number(payload.row);
+    if (!row || row < 2) return invJsonOut_({ ok: false, error: "Invalid row" });
     sheet.getRange(row, 12).setValue(payload.status || "");
     return invJsonOut_({ ok: true, row: row, status: payload.status || "" });
   }
-  if (payload.action === "update_in_drive") {
+
+  if (action === "update_in_drive") {
+    const row = Number(payload.row);
+    if (!row || row < 2) return invJsonOut_({ ok: false, error: "Invalid row" });
     sheet.getRange(row, 13).setValue(Boolean(payload.in_drive));
     return invJsonOut_({ ok: true, row: row, in_drive: Boolean(payload.in_drive) });
+  }
+
+  if (action === "add_product") {
+    const lastRow = Math.max(1, sheet.getLastRow());
+    const colB = lastRow > 1 ? sheet.getRange(2, 2, lastRow - 1, 1).getValues() : [];
+    const colA = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 1).getValues() : [];
+    let targetRow = 2;
+    let maxSn = 0;
+    for (let i = 0; i < colB.length; i++) {
+      if (String(colB[i][0] || "").trim()) {
+        targetRow = i + 3;
+      }
+      const snVal = Number(colA[i][0]);
+      if (!isNaN(snVal) && snVal > maxSn) maxSn = snVal;
+    }
+
+    const cost = Number(payload.cost) || 0;
+    const darazSp = Number(payload.daraz_sp) || 0;
+    const commRate = payload.daraz_comm !== undefined && payload.daraz_comm !== "" ? Number(payload.daraz_comm) : 0.3;
+
+    sheet.getRange(targetRow, 1, 1, 14).setValues([[
+      maxSn + 1,
+      String(payload.code || "").trim(),
+      cost,
+      darazSp,
+      commRate,
+      `=D${targetRow}*E${targetRow}`,
+      `=D${targetRow}-F${targetRow}`,
+      `=G${targetRow}-C${targetRow}`,
+      String(payload.group || "").trim(),
+      String(payload.name || "").trim(),
+      "",
+      String(payload.status || "").trim(),
+      Boolean(payload.in_drive),
+      String(payload.image_url || "").trim(),
+    ]]);
+    sheet.getRange(targetRow, 13).insertCheckboxes();
+    return invJsonOut_({ ok: true, row: targetRow });
+  }
+
+  if (action === "edit_product") {
+    const row = Number(payload.row);
+    if (!row || row < 2) return invJsonOut_({ ok: false, error: "Invalid row" });
+    sheet.getRange(row, 2).setValue(String(payload.code || "").trim());
+    sheet.getRange(row, 3).setValue(Number(payload.cost) || 0);
+    sheet.getRange(row, 4).setValue(Number(payload.daraz_sp) || 0);
+    sheet.getRange(row, 9).setValue(String(payload.group || "").trim());
+    sheet.getRange(row, 10).setValue(String(payload.name || "").trim());
+    sheet.getRange(row, 12).setValue(String(payload.status || "").trim());
+    sheet.getRange(row, 13).setValue(Boolean(payload.in_drive));
+    if (payload.image_url !== undefined) {
+      sheet.getRange(row, 14).setValue(String(payload.image_url || "").trim());
+    }
+    return invJsonOut_({ ok: true, row: row });
+  }
+
+  if (action === "delete_product") {
+    const row = Number(payload.row);
+    if (!row || row < 2) return invJsonOut_({ ok: false, error: "Invalid row" });
+    sheet.deleteRow(row);
+    return invJsonOut_({ ok: true, deleted_row: row });
   }
 
   return invJsonOut_({ ok: false, error: "Unknown action" });
