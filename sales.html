@@ -329,9 +329,11 @@
           <input type="text" id="custAddress" placeholder="e.g. Kalanki, Kathmandu, Nepal" oninput="renderInvoice()" />
         </div>
 
-        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-          <input list="productOptions" id="quickPick" placeholder="Pick product from Sheet1 (code or name)..." style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px;" />
-          <datalist id="productOptions"></datalist>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;">
+          <input type="text" id="productSearch" placeholder="Filter products..." oninput="filterProductDropdown()" style="width:150px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px;" />
+          <select id="productSelect" style="flex:1; min-width:200px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px;">
+            <option value="">-- Select Product from Sheet1 --</option>
+          </select>
           <button class="btn primary" onclick="addPickedProduct()">+ Add Product</button>
           <button class="btn" onclick="addBlankLine()">+ Blank Row</button>
         </div>
@@ -579,17 +581,27 @@
       await Promise.all([loadProductsList(), loadSales()]);
     }
 
+    function filterProductDropdown() {
+      const q = (document.getElementById("productSearch").value || "").trim().toLowerCase();
+      const sel = document.getElementById("productSelect");
+      const filtered = q
+        ? products.filter(p => p.code.toLowerCase().includes(q) || (p.name || "").toLowerCase().includes(q) || (p.group || "").toLowerCase().includes(q))
+        : products;
+      sel.innerHTML = `<option value="">-- Select Product (${filtered.length}) --</option>` +
+        filtered.map(p => `<option value="${p.code}">${p.code} — ${p.name || p.group} (Rs. ${p.daraz_sp || p.price || 0})</option>`).join("");
+    }
+
     async function loadProductsList() {
       const cfg = getConfig();
       const u = new URL(cfg.url);
       if (cfg.pin) u.searchParams.set("pin", cfg.pin);
       const res = await fetch(u.toString());
       const data = await res.json();
-      if (data.ok) {
+      if (data.ok && Array.isArray(data.products)) {
         products = data.products;
-        document.getElementById("productOptions").innerHTML = products
-          .map(p => `<option value="${p.code} — ${p.name}"></option>`)
-          .join("");
+        filterProductDropdown();
+      } else {
+        showToast("Error loading products: " + (data.error || "Unknown"));
       }
     }
 
@@ -604,9 +616,13 @@
         showToast("Error: " + data.error);
         return;
       }
-      allSales = data.sales || [];
-      if (!document.getElementById("billNo").value) {
-        document.getElementById("billNo").value = data.next_bill_no || 1;
+      if (!Array.isArray(data.sales)) {
+        showToast("Please update & redeploy apps_script.gs for Sold tab");
+        return;
+      }
+      allSales = data.sales;
+      if (!lineItems.length && data.next_bill_no) {
+        document.getElementById("billNo").value = data.next_bill_no;
       }
       renderSalesHistory();
       renderInvoice();
@@ -659,27 +675,25 @@
     }
 
     function addPickedProduct() {
-      const val = document.getElementById("quickPick").value.trim();
-      if (!val) return;
-      const code = val.split(" — ")[0].trim();
-      const prod = products.find(p => p.code.toLowerCase() === code.toLowerCase()) ||
-                   products.find(p => p.name.toLowerCase().includes(val.toLowerCase()));
-      if (!prod) {
-        lineItems.push({ code: "", name: val, shortName: val, qty: 1, unitPrice: 0, cp: 0, sp: 0 });
-      } else {
-        const unit = Number(prod.daraz_sp) || Number(prod.price) || 0;
-        const cp = Number(prod.cost) || 0;
-        lineItems.push({
-          code: prod.code,
-          name: prod.name || prod.code,
-          shortName: prod.group || prod.name || prod.code,
-          qty: 1,
-          unitPrice: unit,
-          cp: cp,
-          sp: unit,
-        });
+      const code = document.getElementById("productSelect").value.trim();
+      if (!code) {
+        showToast("Please select a product from the dropdown");
+        return;
       }
-      document.getElementById("quickPick").value = "";
+      const prod = products.find(p => p.code === code);
+      if (!prod) return;
+      const unit = Number(prod.daraz_sp) || Number(prod.price) || 0;
+      const cp = Number(prod.cost) || 0;
+      lineItems.push({
+        code: prod.code,
+        name: prod.name || prod.code,
+        shortName: prod.group || prod.name || prod.code,
+        qty: 1,
+        unitPrice: unit,
+        cp: cp,
+        sp: unit,
+      });
+      document.getElementById("productSelect").value = "";
       renderLineEditor();
       renderInvoice();
     }
