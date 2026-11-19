@@ -610,7 +610,11 @@
       const q = (document.getElementById("productSearch").value || "").trim().toLowerCase();
       const sel = document.getElementById("productSelect");
       const filtered = q
-        ? products.filter(p => p.code.toLowerCase().includes(q) || (p.name || "").toLowerCase().includes(q) || (p.group || "").toLowerCase().includes(q))
+        ? products.filter(p =>
+            p.code.toLowerCase().includes(q) ||
+            (p.name || "").toLowerCase().includes(q) ||
+            (p.group || "").toLowerCase().includes(q) ||
+            (p.daraz_name || "").toLowerCase().includes(q))
         : products;
       sel.innerHTML = `<option value="">-- Select Product (${filtered.length}) --</option>` +
         filtered.map(p => `<option value="${p.code}">${p.code} — ${p.name || p.group} (Rs. ${p.daraz_sp || p.price || 0})</option>`).join("");
@@ -689,7 +693,7 @@
         const unit = m.daraz || (m.qty ? Math.round((m.sp / m.qty) * 100) / 100 : m.sp);
         return {
           code: m.code,
-          name: (prod && prod.name) ? prod.name : m.name,
+          name: (prod && (prod.daraz_name || prod.name)) ? (prod.daraz_name || prod.name) : m.name,
           shortName: m.name,
           qty: m.qty || 1,
           unitPrice: unit,
@@ -714,7 +718,7 @@
       const cp = Number(prod.cost) || 0;
       lineItems.push({
         code: prod.code,
-        name: prod.name || prod.code,
+        name: prod.daraz_name || prod.name || prod.code,
         shortName: prod.group || prod.name || prod.code,
         qty: 1,
         unitPrice: unit,

@@ -103,7 +103,7 @@ function doGet(e) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return invJsonOut_({ ok: true, products: [] });
 
-  const values = sheet.getRange(2, 1, lastRow - 1, 14).getValues();
+  const values = sheet.getRange(2, 1, lastRow - 1, 15).getValues();
   const products = [];
 
   for (let i = 0; i < values.length; i++) {
@@ -133,6 +133,7 @@ function doGet(e) {
       status: normStatus,
       in_drive: r[12] === true || String(r[12]).toUpperCase() === "TRUE",
       image_url: String(r[13] || "").trim(),
+      daraz_name: String(r[14] || "").trim(),
     });
   }
 
