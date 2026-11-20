@@ -186,6 +186,8 @@
         <p id="connStatus">Not connected to Google Sheet</p>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <a class="pill-btn" href="https://drive.google.com/drive/folders/1-4hk_FmRbfv6MCCA2LWbcdBhT7dkduq8" target="_blank" rel="noopener" style="text-decoration:none; background:#eff6ff; border-color:#93c5fd; color:#1d4ed8;">📁 Drive Folder</a>
+        <a class="pill-btn" href="https://docs.google.com/spreadsheets/d/1Oghzph9BTPKGlJ-YbD9wvcZWHJtdoj4fU5Rlc9QTsio/edit?gid=0#gid=0" target="_blank" rel="noopener" style="text-decoration:none; background:#ecfdf5; border-color:#86efac; color:#15803d;">📊 Open Sheet</a>
         <a class="pill-btn" href="sales.html" style="text-decoration:none; background:#fef3c7; border-color:#f59e0b; color:#92400e;">🧾 Sales &amp; Bill</a>
         <div class="stats" id="stats"></div>
       </div>
@@ -311,7 +313,8 @@
       </div>
       <div class="lightbox-foot">
         <div id="lbMeta" style="font-size:13px; color:#475569;"></div>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <a class="pill-btn" id="lbDriveBtn" href="#" target="_blank" rel="noopener" style="text-decoration:none;">📁 Drive Photo Folder</a>
           <button class="btn-avail" id="lbAvail" style="padding:8px 16px;" onclick="setStatus(lbProduct.row, 'Available')">✓ Available (A)</button>
           <button class="btn-unavail" id="lbUnavail" style="padding:8px 16px;" onclick="setStatus(lbProduct.row, 'Not Available')">✕ Not Available (N)</button>
         </div>
@@ -324,8 +327,10 @@
   <script>
     const STORAGE_URL = "sujan_gas_url";
     const STORAGE_PIN = "sujan_gas_pin";
+    const DRIVE_ROOT_URL = "https://drive.google.com/drive/folders/1-4hk_FmRbfv6MCCA2LWbcdBhT7dkduq8";
 
     let imagesMap = {};
+    let driveFoldersMap = {};
     let allProducts = [];
     let statusFilter = "all";
     let driveFilter = "all";
@@ -392,13 +397,27 @@
     }
 
     async function loadImagesJson() {
-      if (Object.keys(imagesMap).length) return;
-      try {
-        const res = await fetch("images.json");
-        imagesMap = await res.json();
-      } catch (e) {
-        imagesMap = {};
+      if (!Object.keys(imagesMap).length) {
+        try {
+          const res = await fetch("images.json");
+          imagesMap = await res.json();
+        } catch (e) {
+          imagesMap = {};
+        }
       }
+      if (!Object.keys(driveFoldersMap).length) {
+        try {
+          const res = await fetch("drive_folders.json");
+          driveFoldersMap = await res.json();
+        } catch (e) {
+          driveFoldersMap = {};
+        }
+      }
+    }
+
+    function getDriveFolderUrl(code) {
+      const fid = driveFoldersMap[code];
+      return fid ? `https://drive.google.com/drive/folders/${encodeURIComponent(fid)}` : DRIVE_ROOT_URL;
     }
 
     async function loadProducts() {
@@ -515,7 +534,7 @@
             <div class="card-body">
               <div class="meta-row">
                 <span>${p.group || "Uncategorized"}</span>
-                <span>Row ${p.row}</span>
+                <span><a href="${getDriveFolderUrl(p.code)}" target="_blank" rel="noopener" style="color:var(--blue); text-decoration:none; font-weight:600;" title="Open Google Drive photo folder">📁 Drive</a> • Row ${p.row}</span>
               </div>
               <div class="pdt-name">${p.name || p.code}</div>
               <div class="price-row">
@@ -722,6 +741,7 @@
         }
       };
       document.getElementById("lbTitle").textContent = `${lbProduct.code} — ${lbProduct.name}`;
+      document.getElementById("lbDriveBtn").href = getDriveFolderUrl(lbProduct.code);
       lbEl.src = lbProduct.fullImgs[curIdx];
       document.getElementById("lbMeta").textContent =
         `Photo ${curIdx + 1} of ${lbProduct.fullImgs.length} • Group: ${lbProduct.group} • Daraz SP: ${lbProduct.daraz_sp}`;
