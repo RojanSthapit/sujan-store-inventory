@@ -126,6 +126,12 @@
     .btn-unavail:hover { background: var(--red-bg); border-color: var(--red); color: var(--red); }
     .btn-avail.active { background: var(--green); color: #fff; border-color: var(--green); }
     .btn-unavail.active { background: var(--red); color: #fff; border-color: var(--red); }
+    .btn-hl {
+      width: 100%; margin-top: 6px; padding: 6px 10px; border-radius: 8px;
+      border: 1px solid #e5c675; background: #fffbeb; color: #92400e;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .btn-hl.active { background: #d97706; border-color: #b45309; color: #fff; }
 
     .drive-row {
       display: flex; align-items: center; justify-content: space-between;
@@ -206,6 +212,7 @@
         <button class="pill-btn active" data-drive="all">All Drive</button>
         <button class="pill-btn" data-drive="yes">In Drive</button>
         <button class="pill-btn" data-drive="no">Not in Drive</button>
+        <button class="pill-btn" data-drive="highlight">★ Highlighted</button>
       </div>
       <button class="primary-btn" style="background:var(--green); border-color:var(--green);" onclick="openProductModal()">+ Add Product</button>
       <button class="pill-btn" onclick="syncDriveImages()">☁ Sync Drive</button>
@@ -494,6 +501,7 @@
         if (statusFilter !== "all" && statusFilter !== "unmarked" && p.status !== statusFilter) return false;
         if (driveFilter === "yes" && !p.in_drive) return false;
         if (driveFilter === "no" && p.in_drive) return false;
+        if (driveFilter === "highlight" && !p.highlight) return false;
         return true;
       });
     }
@@ -547,6 +555,7 @@
                 <button class="btn-avail ${p.status === 'Available' ? 'active' : ''}" onclick="setStatus(${p.row}, 'Available')">✓ Available</button>
                 <button class="btn-unavail ${p.status === 'Not Available' ? 'active' : ''}" onclick="setStatus(${p.row}, 'Not Available')">✕ Not Available</button>
               </div>
+              <button class="btn-hl ${p.highlight ? 'active' : ''}" onclick="setHighlight(${p.row}, ${!p.highlight})">${p.highlight ? '★ Highlighted in Banner' : '☆ Add to Banner Highlight'}</button>
               <div class="drive-row">
                 <label>
                   <input type="checkbox" ${p.in_drive ? "checked" : ""} onchange="setInDrive(${p.row}, this.checked)" />
@@ -702,6 +711,16 @@
       const out = await postUpdate({ action: "update_in_drive", row, in_drive: inDrive });
       if (!out.ok) showToast("Error: " + out.error);
       else showToast(`${p.code}: In Drive = ${inDrive ? "TRUE" : "FALSE"}`);
+    }
+
+    async function setHighlight(row, hl) {
+      const p = allProducts.find(x => x.row === row);
+      if (!p) return;
+      p.highlight = hl;
+      render();
+      const out = await postUpdate({ action: "update_highlight", row, highlight: hl });
+      if (!out.ok) showToast("Error: " + out.error);
+      else showToast(`${p.code}: ${hl ? "★ Added to Banner Highlight" : "Removed from Banner Highlight"}`);
     }
 
     function openLightbox(row) {

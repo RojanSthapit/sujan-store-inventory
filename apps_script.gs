@@ -104,7 +104,7 @@ function doGet(e) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return invJsonOut_({ ok: true, products: [] });
 
-  const values = sheet.getRange(2, 1, lastRow - 1, 15).getValues();
+  const values = sheet.getRange(2, 1, lastRow - 1, 16).getValues();
   const products = [];
 
   for (let i = 0; i < values.length; i++) {
@@ -135,6 +135,7 @@ function doGet(e) {
       in_drive: r[12] === true || String(r[12]).toUpperCase() === "TRUE",
       image_url: String(r[13] || "").trim(),
       daraz_name: String(r[14] || "").trim(),
+      highlight: r[15] === true || String(r[15]).toUpperCase() === "TRUE",
     });
   }
 
@@ -162,6 +163,16 @@ function doPost(e) {
     if (!row || row < 2) return invJsonOut_({ ok: false, error: "Invalid row" });
     sheet.getRange(row, 13).setValue(Boolean(payload.in_drive));
     return invJsonOut_({ ok: true, row: row, in_drive: Boolean(payload.in_drive) });
+  }
+
+  if (action === "update_highlight") {
+    const row = Number(payload.row);
+    if (!row || row < 2) return invJsonOut_({ ok: false, error: "Invalid row" });
+    if (!sheet.getRange(1, 16).getValue()) {
+      sheet.getRange(1, 16).setValue("Highlight");
+    }
+    sheet.getRange(row, 16).setValue(Boolean(payload.highlight));
+    return invJsonOut_({ ok: true, row: row, highlight: Boolean(payload.highlight) });
   }
 
   if (action === "add_product") {
