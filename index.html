@@ -182,43 +182,48 @@
       padding: 14px 18px; display: flex; flex-wrap: wrap; justify-content: space-between;
       align-items: center; gap: 12px; border-top: 1px solid var(--border);
     }
+    .locked-control, header button:disabled, header input:disabled, header select:disabled {
+      opacity: 0.42 !important;
+      pointer-events: none !important;
+      cursor: not-allowed !important;
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="header-top">
       <div class="title-wrap">
-        <h1>Sujan Store — Inventory Manager</h1>
+        <h1>New Sujan Store — Inventory Manager</h1>
         <p id="connStatus">Not connected to Google Sheet</p>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <a class="pill-btn" href="https://drive.google.com/drive/folders/1-4hk_FmRbfv6MCCA2LWbcdBhT7dkduq8" target="_blank" rel="noopener" style="text-decoration:none; background:#eff6ff; border-color:#93c5fd; color:#1d4ed8;">📁 Drive Folder</a>
-        <a class="pill-btn" href="https://docs.google.com/spreadsheets/d/1Oghzph9BTPKGlJ-YbD9wvcZWHJtdoj4fU5Rlc9QTsio/edit?gid=0#gid=0" target="_blank" rel="noopener" style="text-decoration:none; background:#ecfdf5; border-color:#86efac; color:#15803d;">📊 Open Sheet</a>
-        <a class="pill-btn" href="https://sujanstore.github.io/" target="_blank" rel="noopener" style="text-decoration:none; background:#fdf2f8; border-color:#f9a8d4; color:#9d174d;">🌐 Live Catalog</a>
-        <a class="pill-btn" href="sales.html" style="text-decoration:none; background:#fef3c7; border-color:#f59e0b; color:#92400e;">🧾 Sales &amp; Bill</a>
+        <a class="pill-btn needs-sheet" href="https://drive.google.com/drive/folders/1-4hk_FmRbfv6MCCA2LWbcdBhT7dkduq8" target="_blank" rel="noopener" style="text-decoration:none; background:#eff6ff; border-color:#93c5fd; color:#1d4ed8;">📁 Drive Folder</a>
+        <a class="pill-btn needs-sheet" href="https://docs.google.com/spreadsheets/d/1Oghzph9BTPKGlJ-YbD9wvcZWHJtdoj4fU5Rlc9QTsio/edit?gid=0#gid=0" target="_blank" rel="noopener" style="text-decoration:none; background:#ecfdf5; border-color:#86efac; color:#15803d;">📊 Open Sheet</a>
+        <a class="pill-btn needs-sheet" href="https://sujanstore.com.np/" target="_blank" rel="noopener" style="text-decoration:none; background:#fdf2f8; border-color:#f9a8d4; color:#9d174d;">🌐 Live Catalog</a>
+        <a class="pill-btn needs-sheet" href="sales.html" style="text-decoration:none; background:#fef3c7; border-color:#f59e0b; color:#92400e;">🧾 Sales &amp; Bill</a>
         <div class="stats" id="stats"></div>
       </div>
     </div>
     <div class="controls">
-      <input type="text" id="search" placeholder="Search Pdt Code or Product Name..." />
-      <select id="groupFilter"><option value="">All Groups</option></select>
+      <input type="text" id="search" class="needs-sheet" placeholder="Search Pdt Code or Product Name..." />
+      <select id="groupFilter" class="needs-sheet"><option value="">All Groups</option></select>
       <div class="filter-group" id="statusFilters">
-        <button class="pill-btn active" data-status="all">All</button>
-        <button class="pill-btn" data-status="Available">Available</button>
-        <button class="pill-btn" data-status="Not Available">Not Available</button>
-        <button class="pill-btn" data-status="unmarked">Unmarked</button>
+        <button class="pill-btn active needs-sheet" data-status="all">All</button>
+        <button class="pill-btn needs-sheet" data-status="Available">Available</button>
+        <button class="pill-btn needs-sheet" data-status="Not Available">Not Available</button>
+        <button class="pill-btn needs-sheet" data-status="unmarked">Unmarked</button>
       </div>
       <div class="filter-group" id="driveFilters">
-        <button class="pill-btn active" data-drive="all">All Drive</button>
-        <button class="pill-btn" data-drive="yes">In Drive</button>
-        <button class="pill-btn" data-drive="no">Not in Drive</button>
-        <button class="pill-btn" data-drive="highlight">★ Highlighted</button>
+        <button class="pill-btn active needs-sheet" data-drive="all">All Drive</button>
+        <button class="pill-btn needs-sheet" data-drive="yes">In Drive</button>
+        <button class="pill-btn needs-sheet" data-drive="no">Not in Drive</button>
+        <button class="pill-btn needs-sheet" data-drive="highlight">★ Highlighted</button>
       </div>
-      <button class="primary-btn" style="background:var(--green); border-color:var(--green);" onclick="openProductModal()">+ Add Product</button>
-      <button class="pill-btn" onclick="syncDriveImages()">☁ Sync Drive</button>
-      <button class="primary-btn" onclick="loadProducts()">↻ Refresh</button>
-      <button class="pill-btn" onclick="openSetup()">⚙ Setup</button>
-      <button class="pill-btn" onclick="resetSetup()">↺ Reset Setup</button>
+      <button class="primary-btn needs-sheet" style="background:var(--green); border-color:var(--green);" onclick="openProductModal()">+ Add Product</button>
+      <button class="pill-btn needs-sheet" onclick="syncDriveImages()">☁ Sync Drive</button>
+      <button class="primary-btn needs-sheet" onclick="loadProducts()">↻ Refresh</button>
+      <button class="pill-btn" id="setupBtn" onclick="openSetup()">⚙ Setup</button>
+      <button class="pill-btn needs-sheet" onclick="resetSetup()">↺ Reset Setup</button>
     </div>
   </header>
 
@@ -353,6 +358,24 @@
       };
     }
 
+    function updateUiLockState() {
+      const configured = Boolean(getConfig().url);
+      document.querySelectorAll(".needs-sheet").forEach(el => {
+        if (el.tagName === "A") {
+          el.classList.toggle("locked-control", !configured);
+          if (!configured) el.setAttribute("tabindex", "-1");
+          else el.removeAttribute("tabindex");
+        } else {
+          el.disabled = !configured;
+          el.classList.toggle("locked-control", !configured);
+        }
+      });
+      if (!configured) {
+        document.getElementById("connStatus").textContent = "Not connected — Click ⚙ Setup to connect Google Sheet";
+        document.getElementById("grid").innerHTML = "<p>Google Sheet link is not set up. Please click <strong>⚙ Setup</strong> to connect.</p>";
+      }
+    }
+
     function openSetup() {
       const cfg = getConfig();
       document.getElementById("gasUrlInput").value = cfg.url;
@@ -370,7 +393,8 @@
       localStorage.setItem(STORAGE_URL, url);
       localStorage.setItem(STORAGE_PIN, pin);
       closeSetup();
-      loadProducts();
+      updateUiLockState();
+      if (url) loadProducts();
     }
 
     function resetSetup() {
@@ -379,6 +403,7 @@
       document.getElementById("gasUrlInput").value = "";
       document.getElementById("gasPinInput").value = "";
       allProducts = [];
+      updateUiLockState();
       showToast("Setup cleared");
       openSetup();
     }
@@ -798,6 +823,7 @@
       else if (e.key.toLowerCase() === "n") setStatus(lbProduct.row, "Not Available");
     });
 
+    updateUiLockState();
     loadProducts();
   </script>
 </body>
